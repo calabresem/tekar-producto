@@ -1,0 +1,11 @@
+
+# TEKAR PRODUCTO
+
+Module for catalog and product management.
+
+Includes category and dynamic properties by product type.
+
+## Requirements
+
+Kohana 3.3+
+
