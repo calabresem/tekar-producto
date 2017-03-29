@@ -86,6 +86,7 @@ abstract class Controller_Backend_Core_Categorias extends Controller {
                 FROM categoria AS padre
                 WHERE padre.tipo_categoria_id IN (1,2)
                 AND padre.categoria_id IS NULL
+                AND 1=1
 
                 UNION
 
@@ -94,8 +95,15 @@ abstract class Controller_Backend_Core_Categorias extends Controller {
                 FROM categoria AS hijos
                 WHERE hijos.tipo_categoria_id IN (1,2)
                 AND hijos.categoria_id IS NOT NULL
+                AND 2=2
 
                 ORDER BY padre_id ASC, es_hijo ASC, descripcion ASC";
+
+        if (!empty($buscado)) {
+            $sql = str_replace("1=1", "padre.descripcion LIKE '%".$buscado."%'", $sql);
+            $sql = str_replace("2=2", "hijos.descripcion LIKE '%".$buscado."%'", $sql);
+        }
+
 
         $plantilla->categorias = DB::query( Database::SELECT, $sql )->execute();
 

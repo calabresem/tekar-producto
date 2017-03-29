@@ -5,7 +5,8 @@
  *
  * @author Marcos Calabrese <marcosc@tekar.net>
  **/
-abstract class Controller_Backend_Core_Producto extends Controller {
+abstract class Controller_Backend_Core_Producto extends Controller
+{
 
 
     /**
@@ -33,10 +34,9 @@ abstract class Controller_Backend_Core_Producto extends Controller {
         $this->usuario = Auth::instance()->get_user();
 
         // si no hay usuario, entonces mostramos el login
-        if( !$this->usuario )
-            $this->redirect( $this->base_uri.'login', 302 );
-
-
+        if (!$this->usuario) {
+            $this->redirect($this->base_uri.'login', 302);
+        }
     }
 
 
@@ -49,20 +49,18 @@ abstract class Controller_Backend_Core_Producto extends Controller {
      **/
     public function action_get_listar()
     {
-
-
         $filtros = Request::current()->query();
 
 
         // carga la plnatilla de contenidos
-        $plantilla = View::factory( 'backend/productos' )
-                            ->bind( 'errors', $errors )
-                            ->bind( 'message', $message );
+        $plantilla = View::factory('backend/productos')
+                            ->bind('errors', $errors)
+                            ->bind('message', $message);
 
 
         // carga la lista
-        $plantilla->productos = ORM::factory( 'Producto' )
-                                    ->where( 'borrado', 'IS', null )
+        $plantilla->productos = ORM::factory('Producto')
+                                    ->where('borrado', 'IS', null)
                                     ->find_all();
 
 
@@ -74,9 +72,7 @@ abstract class Controller_Backend_Core_Producto extends Controller {
         $plantilla->usuario = $this->usuario;
 
 
-        $this->response->body( $plantilla->render() );
-
-
+        $this->response->body($plantilla->render());
     }
 
 
@@ -91,30 +87,25 @@ abstract class Controller_Backend_Core_Producto extends Controller {
     {
 
         // busca el codigo pasado por parametro
-        $id = Request::current()->param( 'id' );
+        $id = Request::current()->param('id');
 
 
         // cambia el template
-        $plantilla = View::factory( 'backend/producto' )
-                            ->bind( 'errors', $errors )
-                            ->bind( 'message', $message );
+        $plantilla = View::factory('backend/producto')
+                            ->bind('errors', $errors)
+                            ->bind('message', $message);
 
 
-        $producto = ORM::factory( 'Producto', $id );
+        $producto = ORM::factory('Producto', $id);
 
 
 
         // revisamos que el codigo exista
-        if( $producto->loaded() === true )
-        {
-
+        if ($producto->loaded() === true) {
             $plantilla->h1 = 'Edici&oacute;n de Producto: ' . $producto->nombre;
-
-        } else
-        {
+        } else {
             $plantilla->h1 = 'Nuevo producto';
             $producto->estado_id = 1;
-
         }
 
 
@@ -124,9 +115,7 @@ abstract class Controller_Backend_Core_Producto extends Controller {
         $plantilla->titulo = $plantilla->h1;
         $plantilla->usuario = $this->usuario;
 
-        $this->response->body( $plantilla->render() );
-
-
+        $this->response->body($plantilla->render());
     }
 
 
@@ -141,90 +130,74 @@ abstract class Controller_Backend_Core_Producto extends Controller {
      **/
     public function action_post_editar()
     {
-
-
         $json = new JSend();
 
 
-        $DB = Database::instance( 'default' );
+        $DB = Database::instance('default');
 
         $DB->begin();
 
-        try
-        {
+        try {
 
 
             /**
              * Procesamos
              **/
 
-            $datos_producto = Request::current()->post( 'producto' );
+            $datos_producto = Request::current()->post('producto');
 
 
             // reglas de validacion + validacion de token
-            $validacion = Model_Producto::validador( $datos_producto )
-                                    ->rule( 'codigo', 'Model_Core_Producto::codigo_unico' )
-                                    ->rule( 'csrf', 'not_empty' )
-                                    ->rule( 'csrf', 'Security::check' );
+            $validacion = Model_Producto::validador($datos_producto)
+                                    ->rule('codigo', 'Model_Core_Producto::codigo_unico')
+                                    ->rule('csrf', 'not_empty')
+                                    ->rule('csrf', 'Security::check');
 
             // validamos
-            if( $validacion->check() === FALSE )
-                throw new ORM_Validation_Exception( '', $validacion );
+            if ($validacion->check() === false) {
+                throw new ORM_Validation_Exception('', $validacion);
+            }
 
 
-            $producto = ORM::factory( 'Producto' );
+            $producto = ORM::factory('Producto');
 
 
             // asigna los valores al modelo
-            $producto->values( $datos_producto );
+            $producto->values($datos_producto);
 
             // graba
             $producto->save();
 
 
             // reinicia asignacion de Tipos de Producto
-            $producto_tipo = Arr::get( $datos_producto, 'producto_tipo_id' );
-            $producto->remove( 'tipos' );
+            $producto_tipo = Arr::get($datos_producto, 'producto_tipo_id');
+            $producto->remove('tipos');
 
-            if( !empty( $producto_tipo ) )
-            {
-                if( is_array( $producto_tipo ) )
-                {
-
-                    foreach( $producto_tipo as $producto_tipo_id )
-                    {
-                        $producto->add( 'tipos', $producto_tipo_id );
+            if (!empty($producto_tipo)) {
+                if (is_array($producto_tipo)) {
+                    foreach ($producto_tipo as $producto_tipo_id) {
+                        $producto->add('tipos', $producto_tipo_id);
                     }
-
-                } else
-                {
-
-                    $producto->add( 'tipos', $producto_tipo );
-
+                } else {
+                    $producto->add('tipos', $producto_tipo);
                 }
-
             }
 
 
 
             // ---------------------------------  CATEGORIAS
-            $datos_categoria = Request::current()->post( 'categoria' );
+            $datos_categoria = Request::current()->post('categoria');
 
-            if( !is_null( $datos_categoria ) )
-            {
+            if (!is_null($datos_categoria)) {
+                $categorias = Arr::get($datos_categoria, 'id', null);
 
-                $categorias = Arr::get( $datos_categoria, 'id', NULL );
+                $producto->remove('categorias');
 
-                $producto->remove( 'categorias' );
-
-                if( count( $categorias ) > 0 )
-                {
-                    foreach( $categorias as $categoria_id )
-                    {
-                        $producto->add( 'categorias', $categoria_id );
+                if (count($categorias) > 0) {
+                    foreach ($categorias as $categoria_id) {
+                        $producto->add('categorias', $categoria_id);
                     }
                 }
-
             }
 
 
@@ -234,38 +207,25 @@ abstract class Controller_Backend_Core_Producto extends Controller {
             // respuesta
             $json->uri = '/'.$this->base_uri.'producto/editar/'.$producto->id;
             $json->mensaje = 'Grabado.';
-
-
-
-        } catch ( ORM_Validation_Exception $e )
-        {
-
+        } catch (ORM_Validation_Exception $e) {
             $DB->rollback();
 
             // carga los errores de validacion
-            $respuesta = $e->errors( 'model/producto' );
+            $respuesta = $e->errors('model/producto');
 
             $json->status(JSend::FAIL)
-                ->data( 'errors', $respuesta );
-
-
-        }
-        catch ( Exception $e )
-        {
-
+                ->data('errors', $respuesta);
+        } catch (Exception $e) {
             $DB->rollback();
 
-            $json->status( JSend::FAIL )
-                ->data( 'errors', array( $e->getMessage() ) );
-
+            $json->status(JSend::FAIL)
+                ->data('errors', array( $e->getMessage() ));
         }
 
 
-        unset( $DB, $producto, $validacion, $datos_producto );
+        unset($DB, $producto, $validacion, $datos_producto);
 
-        $json->render_into( $this->response );
-
-
+        $json->render_into($this->response);
     }
 
 
@@ -280,42 +240,40 @@ abstract class Controller_Backend_Core_Producto extends Controller {
      **/
     public function action_put_editar()
     {
-
-
         $json = new JSend();
 
 
-        $DB = Database::instance( 'default' );
+        $DB = Database::instance('default');
 
         $DB->begin();
 
-        try
-        {
+        try {
 
 
             /**
              * Procesamos
              **/
             $put_crudo = Request::data();
-            $datos_producto = Arr::get( $put_crudo, 'producto' );
+            $datos_producto = Arr::get($put_crudo, 'producto');
 
 
             // reglas de validacion + validacion de token
-            $validacion = Model_Producto::validador( $datos_producto )
-                                    ->rule( 'csrf', 'not_empty' )
-                                    ->rule( 'csrf', 'Security::check' );
+            $validacion = Model_Producto::validador($datos_producto)
+                                    ->rule('csrf', 'not_empty')
+                                    ->rule('csrf', 'Security::check');
 
             // validamos
-            if( $validacion->check() === FALSE )
-                throw new ORM_Validation_Exception( '', $validacion );
+            if ($validacion->check() === false) {
+                throw new ORM_Validation_Exception('', $validacion);
+            }
 
 
 
-            $producto = ORM::factory( 'producto', $datos_producto['id'] );
+            $producto = ORM::factory('producto', $datos_producto['id']);
 
 
             // asigna los valores al modelo
-            $producto->values( $datos_producto );
+            $producto->values($datos_producto);
 
             // graba
             $producto->save();
@@ -323,87 +281,62 @@ abstract class Controller_Backend_Core_Producto extends Controller {
 
 
             // ---------------------------------  TIPO DE PRODUCTO
-            $producto_tipo = Arr::get( $datos_producto, 'producto_tipo_id' );
-            $producto->remove( 'tipos' );
+            $producto_tipo = Arr::get($datos_producto, 'producto_tipo_id');
+            $producto->remove('tipos');
 
-            if( !empty( $producto_tipo ) )
-            {
-                if( is_array( $producto_tipo ) )
-                {
-
-                    foreach( $producto_tipo as $producto_tipo_id )
-                    {
-                        $producto->add( 'tipos', $producto_tipo_id );
+            if (!empty($producto_tipo)) {
+                if (is_array($producto_tipo)) {
+                    foreach ($producto_tipo as $producto_tipo_id) {
+                        $producto->add('tipos', $producto_tipo_id);
                     }
-
-                } else
-                {
-
-                    $producto->add( 'tipos', $producto_tipo );
-
+                } else {
+                    $producto->add('tipos', $producto_tipo);
                 }
-
             }
 
 
             // ---------------------------------  CATEGORIAS
-            $put_categoria = Arr::get( $put_crudo, 'categoria', NULL );
+            $put_categoria = Arr::get($put_crudo, 'categoria', null);
 
-            if( !is_null( $put_categoria ) )
-            {
+            if (!is_null($put_categoria)) {
+                $categorias = Arr::get($put_categoria, 'id', null);
 
-                $categorias = Arr::get( $put_categoria, 'id', NULL );
+                $producto->remove('categorias');
 
-                $producto->remove( 'categorias' );
-
-                if( count( $categorias ) > 0 )
-                {
-                    foreach( $categorias as $categoria_id )
-                    {
-                        $producto->add( 'categorias', $categoria_id );
+                if (count($categorias) > 0) {
+                    foreach ($categorias as $categoria_id) {
+                        $producto->add('categorias', $categoria_id);
                     }
                 }
-
             }
 
 
 
             // --------------------------------- CARACTERISTICAS
-            $caracteristicas = Arr::get( $put_crudo, 'caracteristicas', NULL );
+            $caracteristicas = Arr::get($put_crudo, 'caracteristicas', null);
 
-            if( !is_null( $caracteristicas ) )
-            {
-
-                foreach( $caracteristicas as $caract_id => $caract_valor )
-                {
+            if (!is_null($caracteristicas)) {
+                foreach ($caracteristicas as $caract_id => $caract_valor) {
 
                     // carga la categoria
-                    $producto_tipo_caract = ORM::factory( 'Producto_Tipo_Caracteristica', $caract_id );
+                    $producto_tipo_caract = ORM::factory('Producto_Tipo_Caracteristica', $caract_id);
 
 
                     // buscamos si el producto tiene cargada la caracteristica
-                    $caracteristica = $producto->caracteristica( $caract_id );
+                    $caracteristica = $producto->caracteristica($caract_id);
 
 
                     // si el valor esta vacio y hay caracteristica, la borra
-                    if( empty( $caract_valor ) AND $caracteristica->loaded() )
-                    {
-
+                    if (empty($caract_valor) and $caracteristica->loaded()) {
                         $caracteristica->delete();
-
-                    } elseif( !empty( $caract_valor ) )
-                    {
-
+                    } elseif (!empty($caract_valor)) {
                         $caracteristica->producto_id = $producto->id;
                         $caracteristica->producto_tipo_caracteristica_id = $caract_id;
                         $caracteristica->valor = $caract_valor;
                         $caracteristica->descripcion = $producto_tipo_caract->descripcion;
                         $caracteristica->save();
-
                     }
-
                 }
-
             }
 
 
@@ -413,38 +346,25 @@ abstract class Controller_Backend_Core_Producto extends Controller {
             // respuesta
             $json->uri = '/'.$this->base_uri.'producto/editar/'.$producto->id;
             $json->mensaje = 'Grabado.';
-
-
-        } catch ( ORM_Validation_Exception $e )
-        {
-
+        } catch (ORM_Validation_Exception $e) {
             $DB->rollback();
 
             // carga los errores de validacion
-            $respuesta = $e->errors( 'backend/errors/categoria' );
+            $respuesta = $e->errors('backend/errors/categoria');
 
             $json->status(JSend::FAIL)
-                ->data( 'errors', $respuesta );
-
-
-
-        }
-        catch ( Exception $e )
-        {
-
+                ->data('errors', $respuesta);
+        } catch (Exception $e) {
             $DB->rollback();
 
-            $json->status( JSend::FAIL )
-                ->data( 'errors', array( $e->getMessage() ) );
-
+            $json->status(JSend::FAIL)
+                ->data('errors', array( $e->getMessage() ));
         }
 
 
-        unset( $DB, $producto, $validacion, $put_crudo, $datos_producto, $producto_tipo );
+        unset($DB, $producto, $validacion, $put_crudo, $datos_producto, $producto_tipo);
 
-        $json->render_into( $this->response );
-
-
+        $json->render_into($this->response);
     }
 
 
@@ -463,17 +383,15 @@ abstract class Controller_Backend_Core_Producto extends Controller {
      **/
     public function action_post_importar()
     {
-
         $json = new JSend();
 
 
-        $DB = Database::instance( 'default' );
+        $DB = Database::instance('default');
 
         $DB->begin();
 
 
-        try
-        {
+        try {
 
 
             /**
@@ -498,9 +416,9 @@ abstract class Controller_Backend_Core_Producto extends Controller {
              * Generamos el grupo
              **/
 
-            $grupo = ORM::factory( 'Grupo' );
+            $grupo = ORM::factory('Grupo');
 
-            $grupo->nombre = '** nuevo del ' . date( 'd-m-Y' ) . ' **';
+            $grupo->nombre = '** nuevo del ' . date('d-m-Y') . ' **';
 
 
             // graba
@@ -524,39 +442,25 @@ abstract class Controller_Backend_Core_Producto extends Controller {
             // respuesta
             $json->uri = '/'.$this->base_uri.'grupo/editar/'.$grupo->id;
             $json->mensaje = 'Grabado.';
-
-
-
-        } catch ( ORM_Validation_Exception $e )
-        {
-
+        } catch (ORM_Validation_Exception $e) {
             $DB->rollback();
 
             // carga los errores de validacion
-            $respuesta = $e->errors( 'backend/model/grupo' );
+            $respuesta = $e->errors('backend/model/grupo');
 
             $json->status(JSend::FAIL)
-                ->data( 'errors', $respuesta );
-
-
-
-        }
-        catch ( Exception $e )
-        {
-
+                ->data('errors', $respuesta);
+        } catch (Exception $e) {
             $DB->rollback();
 
-            $json->status( JSend::FAIL )
-                ->data( 'errors', 'Error ['.$e->getMessage().']' );
-
+            $json->status(JSend::FAIL)
+                ->data('errors', 'Error ['.$e->getMessage().']');
         }
 
 
-        unset( $DB, $grupo, $validacion, $post, $post_slide );
+        unset($DB, $grupo, $validacion, $post, $post_slide);
 
-        $json->render_into( $this->response );
-
-
+        $json->render_into($this->response);
     }
 
 
@@ -573,19 +477,18 @@ abstract class Controller_Backend_Core_Producto extends Controller {
     {
 
         // busca el codigo pasado por parametro
-        $id = Request::current()->param( 'id' );
+        $id = Request::current()->param('id');
 
 
         $json = new JSend();
 
 
-        $DB = Database::instance( 'default' );
+        $DB = Database::instance('default');
 
         $DB->begin();
 
 
-        try
-        {
+        try {
 
 
             /**
@@ -593,36 +496,30 @@ abstract class Controller_Backend_Core_Producto extends Controller {
              **/
 
             $put_repositorio = array();
-            parse_str( Request::current()->body(), $put_repositorio );
-            $put_repositorio = Arr::get( $put_repositorio, 'foto' );
+            parse_str(Request::current()->body(), $put_repositorio);
+            $put_repositorio = Arr::get($put_repositorio, 'foto');
 
 
             $productos = array();
 
-            if( is_array( $put_repositorio ) )
-            {
-
+            if (is_array($put_repositorio)) {
                 $helper_repo = new Helper_Repositorio();
 
-                foreach( $put_repositorio as $ruta )
-                {
-
-                    $archivo = new SplFileInfo( $helper_repo::repositorio_usuario( $ruta ) );
+                foreach ($put_repositorio as $ruta) {
+                    $archivo = new SplFileInfo($helper_repo::repositorio_usuario($ruta));
 
                     // genera una foto en base al archivo
-                    $foto = ORM::factory( 'Foto' );
-                    $foto->genera_de_archivo( $archivo );
+                    $foto = ORM::factory('Foto');
+                    $foto->genera_de_archivo($archivo);
 
                     // genera un producto en base a la foto
-                    $producto = ORM::factory( 'Producto' );
-                    $producto->genera_de_foto( $foto );
+                    $producto = ORM::factory('Producto');
+                    $producto->genera_de_foto($foto);
 
                     $productos[] = $producto;
-
                 }
 
-                unset( $helper_repo );
-
+                unset($helper_repo);
             }
 
 
@@ -645,12 +542,11 @@ abstract class Controller_Backend_Core_Producto extends Controller {
              * Generamos el grupo
              **/
 
-            $grupo = ORM::factory( 'Grupo', $id );
+            $grupo = ORM::factory('Grupo', $id);
 
 
-            foreach( $productos as $producto )
-            {
-                $grupo->add( 'productos', $producto->id );
+            foreach ($productos as $producto) {
+                $grupo->add('productos', $producto->id);
             }
 
 
@@ -660,39 +556,25 @@ abstract class Controller_Backend_Core_Producto extends Controller {
             // respuesta
             $json->uri = '/'.$this->base_uri.'grupo/editar/'.$grupo->id;
             $json->mensaje = 'Grabado.';
-
-
-
-        } catch ( ORM_Validation_Exception $e )
-        {
-
+        } catch (ORM_Validation_Exception $e) {
             $DB->rollback();
 
             // carga los errores de validacion
-            $respuesta = $e->errors( 'backend/model/grupo' );
+            $respuesta = $e->errors('backend/model/grupo');
 
             $json->status(JSend::FAIL)
-                ->data( 'errors', $respuesta );
-
-
-
-        }
-        catch ( Exception $e )
-        {
-
+                ->data('errors', $respuesta);
+        } catch (Exception $e) {
             $DB->rollback();
 
-            $json->status( JSend::FAIL )
-                ->data( 'errors', 'Error ['.$e->getMessage().']' );
-
+            $json->status(JSend::FAIL)
+                ->data('errors', 'Error ['.$e->getMessage().']');
         }
 
 
-        unset( $DB, $grupo, $validacion, $post, $post_slide );
+        unset($DB, $grupo, $validacion, $post, $post_slide);
 
-        $json->render_into( $this->response );
-
-
+        $json->render_into($this->response);
     }
 
 
@@ -708,25 +590,24 @@ abstract class Controller_Backend_Core_Producto extends Controller {
 
 
         // busca el codigo pasado por parametro
-        $id = Request::current()->param( 'id' );
+        $id = Request::current()->param('id');
 
 
         $json = new JSend();
 
 
         // inicia transaccion
-        $DB = Database::instance( 'default' );
+        $DB = Database::instance('default');
         $DB->begin();
 
 
-        try
-        {
-
-            $obj = ORM::factory( 'Producto', $id );
+        try {
+            $obj = ORM::factory('Producto', $id);
 
 
-            if( $obj->loaded() === FALSE )
-                throw new Exception( 'El recurso no existe.' );
+            if ($obj->loaded() === false) {
+                throw new Exception('El recurso no existe.');
+            }
 
 
             // borra el contenido
@@ -736,25 +617,17 @@ abstract class Controller_Backend_Core_Producto extends Controller {
 
             $json->mensaje = 'Borrado.';
             $json->uri = '/'.$this->base_uri.'producto/listar/';
-
-
-        }
-        catch ( Exception $e )
-        {
-
+        } catch (Exception $e) {
             $DB->rollback();
 
-            $json->status( JSend::FAIL )
-                ->data( 'errors', array( $e->getMessage() ) );
-
+            $json->status(JSend::FAIL)
+                ->data('errors', array( $e->getMessage() ));
         }
 
-        unset( $DB, $obj, $id );
+        unset($DB, $obj, $id);
 
 
-        $json->render_into( $this->response );
-
-
+        $json->render_into($this->response);
     }
 
 
@@ -768,59 +641,40 @@ abstract class Controller_Backend_Core_Producto extends Controller {
      **/
     public function action_post_estados()
     {
-
-        $id = Request::current()->post( 'id' );
-        $estado = Request::current()->post( 'estado' );
+        $id = Request::current()->post('id');
+        $estado = Request::current()->post('estado');
 
         $json = new JSend();
 
 
-        $DB = Database::instance( 'default' );
+        $DB = Database::instance('default');
 
         $DB->begin();
 
 
-        try
-        {
-
-            if( count( $id ) > 0 )
-            {
-
-                for( $i=0; $i < count( $id ); $i++ )
-                {
-
-                    $producto = ORM::factory( 'Producto', $id[$i] );
-                    $producto->estado_id = ( ( is_array( $estado ) AND in_array( $id[$i], $estado ) ) ? 1 : 0 );
+        try {
+            if (count($id) > 0) {
+                for ($i=0; $i < count($id); $i++) {
+                    $producto = ORM::factory('Producto', $id[$i]);
+                    $producto->estado_id = ((is_array($estado) and in_array($id[$i], $estado)) ? 1 : 0);
                     $producto->save();
-                    unset( $grupo );
-
+                    unset($grupo);
                 }
-
             }
 
             $DB->commit();
 
             $json->mensaje = 'Actualizado.';
-
-        }
-        catch ( Exception $e )
-        {
-
+        } catch (Exception $e) {
             $DB->rollback();
 
-            $json->status( JSend::FAIL )
-                ->data( 'errors', 'Error ['.$e->getMessage().']' );
-
+            $json->status(JSend::FAIL)
+                ->data('errors', 'Error ['.$e->getMessage().']');
         }
 
 
-        unset( $DB, $publicados );
+        unset($DB, $publicados);
 
-        $json->render_into( $this->response );
-
+        $json->render_into($this->response);
     }
-
-
-
 } // End
-

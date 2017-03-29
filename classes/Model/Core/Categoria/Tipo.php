@@ -133,11 +133,14 @@ abstract class Model_Core_Categoria_Tipo extends ORM {
      * @author Marcos Calabrese <marcosc@tekar.net>
      * @version 20140113
      **/
-    public function categorias()
+    public function categorias($activas=TRUE)
     {
-        return( $this->categorias->where( 'categoria_id', 'IS', NULL )->where( 'activo', '=', '1' )->order_by( 'descripcion' )->find_all() );
+        if ($activas) {
+            return( $this->categorias->where( 'categoria_id', 'IS', NULL )->where( 'activo', '=', '1' )->order_by( 'descripcion' )->find_all() );
+        } else {
+            return( $this->categorias->where( 'categoria_id', 'IS', NULL )->order_by( 'descripcion' )->find_all() );
+        }
     }
-
 
 
 }

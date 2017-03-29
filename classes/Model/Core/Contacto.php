@@ -45,15 +45,14 @@ abstract class Model_Core_Contacto extends ORM {
     public function save( Validation $validation = NULL )
     {
 
-        if( empty( $this->pais ) )
-        {
+        if (empty($this->pais)) {
             $this->pais = $this->obtiene_pais();
         }
 
         // guarda la IP, pero en formato numerico
         $this->ip = Helper_MyUrl::ip_long();
 
-        parent::save();
+        parent::save($validation);
 
         return $this;
     }

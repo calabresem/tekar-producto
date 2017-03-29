@@ -17,6 +17,21 @@ abstract class Model_Core_Producto extends ORM {
 
     protected $_categorias;
 
+    /**
+     * Caracteristicas del producto
+     */
+    protected $_caracteristicas = array();
+
+    /**
+     * Fotos del producto.
+     */
+    protected $_fotos = array();
+
+    /**
+     * Campo INFO (JSON) parseado
+     */
+    protected $_info = array();
+
 
     /**
      * Definicion de tablas manualmente. Evitamos lectura extra y podemos usar PDO.
@@ -35,7 +50,7 @@ abstract class Model_Core_Producto extends ORM {
         'proveedor_id'   => NULL,
         'usuario_id'   => NULL,
         'permite_descuento'     => NULL,
-        'i18n'     => NULL,
+        'info'     => NULL,
     );
 
 
@@ -82,7 +97,20 @@ abstract class Model_Core_Producto extends ORM {
         ),
     );
 
-
+    /**
+     * Filtros varios:
+     * - pais_id: para evitar que se intente guardar como 0, que da error de FK.
+     **/
+    public function filters()
+    {
+        return array(
+            'principal_foto_id' => array(
+                array( function( $value ) {
+                    return( empty( $value ) ? NULL : $value );
+                }),
+            ),
+        );
+    }
 
 
     /**
@@ -97,8 +125,8 @@ abstract class Model_Core_Producto extends ORM {
         return Validation::factory( $datos )
                             ->rule( 'codigo', 'not_empty' )
                             ->rule( 'codigo', 'max_length', array( ':value', '30' ) )
-                            ->rule( 'nombre', 'not_empty' )
-                            ->rule( 'principal_foto_id', 'not_empty' );
+                            ->rule( 'nombre', 'not_empty' );
+                            //->rule( 'principal_foto_id', 'not_empty' );
                             //->rule( 'codigo', 'Model_Core_Producto::codigo_unico' )
     }
 
@@ -247,9 +275,28 @@ abstract class Model_Core_Producto extends ORM {
      *
      * @return mixed
      */
+    /*
     public function caracteristica( $producto_tipo_caracteristica_id=NULL )
     {
         return( $this->caracterisicas->where( 'producto_tipo_caracteristica_id', '=', $producto_tipo_caracteristica_id )->find() );
+    }
+    */
+    public function caracteristica($caract)
+    {
+        if (empty($this->_caracteristicas)) {
+            $this->cargaCaracteristicas();
+        }
+
+        return isset($this->_caracteristicas[$caract]) ? $this->_caracteristicas[$caract] : null;
+    }
+
+    public function caracteristicas()
+    {
+        if (empty($this->_caracteristicas)) {
+            $this->cargaCaracteristicas();
+        }
+
+        return $this->_caracteristicas;
     }
 
 
@@ -264,6 +311,24 @@ abstract class Model_Core_Producto extends ORM {
     }
 
 
+    /**
+     * Carga las caracteristicas del producto
+     */
+    protected function cargaCaracteristicas()
+    {
+
+        $sql = "select pcv.descripcion, pcv.valor
+                from producto_caracteristica_valor as pcv
+                inner join producto on pcv.producto_id = producto.id
+                where producto.id = ".$this->id;
+
+        $this->_caracteristicas = DB::query(Database::SELECT, $sql)
+                                        ->execute()
+                                        ->as_array('descripcion', 'valor');
+
+    }
+
+
 
     /**
      * Devuelve las categorias asociadas al producto.
@@ -271,46 +336,83 @@ abstract class Model_Core_Producto extends ORM {
      * @tipo_id
      * @return mixed
      */
-    public function categorias( $tipo_id=NULL )
+    public function categorias($tipo_id=NULL)
     {
 
-        // si ya estan precargadas, devolver directamente
-        /*
-        if( !is_object( $this->_categorias ) AND empty( $this->_categorias ) )
-        {
+        if (is_null($tipo_id)) {
+            $this->_categorias = $this->categorias->where( 'activo', '=', 1 )->find_all();
 
-            //
-            if( is_null( $tipo_id ) )
-            {
-                $this->_categorias = $this->categorias->where( 'activo', '=', 1 )->find_all();
+        } else {
 
-            } else
-            {
-
-                $this->_categorias = $this->categorias
-                                ->where( 'tipo_categoria_id', '=', $tipo_id )
-                                ->where( 'activo', '=', 1 )->find_all();
-
-            }
+            $this->_categorias = $this->categorias
+                            ->where( 'tipo_categoria_id', 'IN', is_array($tipo_id) ? $tipo_id : [$tipo_id] )
+                            ->where( 'activo', '=', 1 )->find_all();
 
         }
-        */
 
-            if( is_null( $tipo_id ) )
-            {
-                $this->_categorias = $this->categorias->where( 'activo', '=', 1 )->find_all();
+        return $this->_categorias;
 
-            } else
-            {
-
-                $this->_categorias = $this->categorias
-                                ->where( 'tipo_categoria_id', '=', $tipo_id )
-                                ->where( 'activo', '=', 1 )->find_all();
-
-            }
+    }
 
 
-        return( $this->_categorias );
+    /**
+     * Busca fotos del producto. No las que salen de uso; sino fotos del producto en si.
+     */
+    protected function cargaFotos()
+    {
+        throw new Exception ('Sin definir.');
+    }
+
+
+    /**
+     * Devuelve la lista de fotos disponibles del producto
+     */
+    public function fotos()
+    {
+        if (empty($this->_fotos)) {
+            $this->cargaFotos();
+        }
+
+        return $this->_fotos;
+    }
+
+    public function imagenDefecto()
+    {
+        if (empty($this->_fotos)) {
+            $this->cargaFotos();
+        }
+
+        return isset($this->_fotos[0]) ? $this->_fotos[0] : null;
+
+    }
+
+    /**
+     * Devuelve un dato del campo INFO (JSON)
+     */
+    public function info($clave=null)
+    {
+        if (empty($this->_info)) {
+            $this->_info = json_decode($this->info, true);
+        }
+
+        if (is_null($clave)) {
+            return $this->_info;
+
+        } else {
+            return isset ($this->_info[$clave]) ? $this->_info[$clave] : null;
+
+        }
+
+    }
+
+    /**
+     * Override del SAVE para ajustar algunos valores x defecto.
+     * Reconsideración: Voy a meterlo como una regla en FILTERS
+     * Igualmente lo dejo x los dudas.
+     */
+    public function save( Validation $validation = NULL )
+    {
+        return parent::save($validation);
     }
 
 

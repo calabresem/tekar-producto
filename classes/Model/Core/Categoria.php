@@ -17,6 +17,11 @@ abstract class Model_Core_Categoria extends ORM {
     protected $_updated_column = array('column' => 'modificado', 'format' => TRUE);
 
 
+    /**
+     * Aca va a ir como array el campo INFO. Ese campo info se graba como JSON.
+     */
+    protected $_opciones = array();
+
 
     /**
      * Definicion de tablas manualmente. Evitamos lectura extra y podemos usar PDO.
@@ -32,7 +37,8 @@ abstract class Model_Core_Categoria extends ORM {
         'creado_por'   => NULL,
         'creado'   => NULL,
         'modificado'   => NULL,
-        'i18n'   => NULL,
+        'en_menu'   => NULL,
+        'info'   => NULL,
     );
 
 
@@ -51,14 +57,17 @@ abstract class Model_Core_Categoria extends ORM {
             'far_key' => 'producto_id',
             'foreign_key' => 'categoria_id',
         ),
+        'categorias' => array(
+            'model'   => 'Categoria',
+            'foreign_key' => 'categoria_id',
+        ),
     );
 
 
     protected $_belongs_to = array(
         'padre' => array(
             'model' => 'Categoria',
-            'far_key' => 'categoria_id',
-            'foreign_key' => 'id',
+            'foreign_key' => 'categoria_id',
         ),
         'tipo' => array(
             'model' => 'Categoria_Tipo',
@@ -148,7 +157,32 @@ abstract class Model_Core_Categoria extends ORM {
         // agrega el primer item
         $categorias = array( '' => '-- es filtro padre' ) + $categorias;
 
-        return( $categorias );
+        return $categorias;
+
+    }
+
+
+    /**
+     * Devuelve o setea valores en la configuracion que esta en el campo JSON
+     **/
+    public function opciones( $clave, $valor=NULL )
+    {
+
+        // inicializa (lazy)
+        if (! empty ($this->info) AND count($this->_opciones) === 0) {
+            $this->_opciones = json_decode($this->info, true);
+        }
+
+
+        // hay que devolver el valor
+        if (is_null($valor)) {
+            return (! isset ($this->_opciones[$clave])) ? NULL : $this->_opciones[$clave];
+
+        } else {
+
+            // hay que setearlo
+            $this->_opciones[$clave] = $valor;
+        }
 
     }
 
